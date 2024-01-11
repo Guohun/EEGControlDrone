@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/activity_main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:paddingTop="@dimen/activity_vertical_margin"
+    tools:context="com.example.yy.bleupdateshowresult.activity.MainActivity">
+
+    <TextView
+        android:id="@+id/version_tv"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="14sp" />
+
+    <TextView
+        style="@style/middle_textview_style"
+        android:text="@string/select_fun" />
+
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:orientation="vertical">
+
+            <Button
+                android:id="@+id/button_showConnect"
+                style="@style/main_button_style_01"
+                android:text="@string/show_connect" />
+
+            <Button
+                android:id="@+id/bSerial"
+                style="@style/main_button_style_01"
+                android:text="@string/connect_serial" />
+
+            <Button
+                android:id="@+id/bUpdate"
+                style="@style/main_button_style_01"
+                android:visibility="gone"
+                android:text="@string/update_firmware" />
+
+        </LinearLayout>
+    </ScrollView>
+
+</LinearLayout>

@@ -1,0 +1,76 @@
+<resources>
+
+
+    <!--   量产工具的   -->
+    <string name="app_name">UMindLite SDK</string>
+    <!--Bluetooth-->
+    <string name="link_bluetooth">搜索到的蓝牙设备</string>
+    <string name="ble_not_supported">BLE is not supported</string>
+    <string name="error_bluetooth_not_supported">Bluetooth not supported.</string>
+    <string name="choose_music">选择音乐</string>
+    <string name="line_color">线条颜色</string>
+
+    <!-- Color Picker -->
+    <string name="dialog_color_picker">Color Picker</string>
+    <string name="press_color_to_apply">Press on Color to apply</string>
+
+    <!-- Preferences -->
+    <string name="pref_category">Category</string>
+    <string name="color1_title">Color 1</string>
+    <string name="color1_summary">black color by default, set by reference</string>
+    <string name="color2_title">Color 2</string>
+    <string name="color2_summary">not persistent color\nalpha slider added via code</string>
+    <string name="color3_title">Color 3</string>
+    <string name="color3_summary">picker with alpha slider</string>
+    <string name="color4_title">Color 4</string>
+    <string name="color4_summary">color set with HEX code in xml</string>integer.xml
+    <string name="cancel1">取消</string>
+    <string name="confirm1">确认</string>
+
+    <string name="enter_max_fft_value">fft最大值:</string>
+    <string name="fft_setting">设置FFT</string>
+    <string name="refresh">刷新</string>
+    <string name="refreshing">正在刷新</string>
+    <string name="scanning">正在扫描</string>
+    <string name="connected">已连接</string>
+    <string name="unconnected">未连接</string>
+    <string name="disconnect">断开</string>
+    <string name="connect">连接</string>
+    <string name="reset">校准</string>
+
+    <string name="send">发送</string>
+    <string name="get">接收</string>
+    <string name="setName">修改名称</string>
+    <string name="command_error">命令格式不正确</string>
+
+    <!--   新定义的   -->
+    <string name="select_fun">选择功能</string>
+    <string name="firmware_update">固件升级</string>
+    <string name="show_connect">连接蓝牙</string>
+    <string name="connect_serial">连接串口</string>
+    <string name="update_firmware">固件升级</string>
+    <string name="get_set_command">命令收发</string>
+    <string name="connect_state">状态</string>
+    <string name="uml_noise">干扰</string>
+    <string name="uml_rssi">信号</string>
+    <string name="uml_att">专注力</string>
+    <string name="uml_med">冥想值</string>
+
+    <string name="uml_model">型号</string>
+    <string name="uml_soft">软件</string>
+    <string name="uml_hard">硬件</string>
+    <string name="uml_id">设备ID</string>
+    <string name="uml_voltage">电压</string>
+    <string name="uml_battery">电量</string>
+    <string name="uml_head">头动</string>
+    <string name="gyro_data">陀螺仪</string>
+    <string name="rollAcc">rollAcc</string>
+    <string name="pitchAcc">pitchAcc</string>
+    <string name="yawAcc">yawAcc</string>
+    <string name="gyroX">gyroX</string>
+    <string name="gyroY">gyroY</string>
+    <string name="gyroZ">gyroZ</string>
+    <string name="roll">roll</string>
+    <string name="pitch">pitch</string>
+    <string name="yaw">yaw</string>
+</resources>

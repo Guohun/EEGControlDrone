@@ -1,0 +1,502 @@
+package com.example.yy.bleupdateshowresult.activity;
+
+import android.bluetooth.BluetoothDevice;
+import android.content.Intent;
+import android.os.Bundle;
+import android.util.Log;
+import android.view.View;
+import android.widget.Button;
+import android.widget.TextView;
+
+import com.eegsmart.blinkdetect.Blink3Algo;
+import com.eegsmart.blinkdetect.Blink3Listener;
+import com.eegsmart.esalgosdkb.bluetooth.EEGBluetoothService;
+import com.eegsmart.esalgosdkb.esalgosupport.AlgoListener;
+import com.eegsmart.esalgosdkb.ESAlgoSDKB;
+
+import com.eegsmart.esalgosdkb.serial.Serial;
+import com.eegsmart.esalgosdkb.util.MathUtils;
+import com.eegsmart.esalgosdkgy.AlgoGyListener;
+import com.eegsmart.esalgosdkgy.ESAlgoSDKGy;
+import com.eegsmart.esalgoteeth.ESAlgoTeethHelper;
+import com.example.yy.bleupdateshowresult.R;
+import com.example.yy.bleupdateshowresult.util.Constant;
+import com.example.yy.bleupdateshowresult.util.FileUtil;
+import com.example.yy.bleupdateshowresult.view.LoadingDialog;
+
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+
+import butterknife.BindView;
+import butterknife.OnClick;
+import lecho.lib.hellocharts.model.Axis;
+import lecho.lib.hellocharts.model.AxisValue;
+import lecho.lib.hellocharts.model.Column;
+import lecho.lib.hellocharts.model.ColumnChartData;
+import lecho.lib.hellocharts.model.Line;
+import lecho.lib.hellocharts.model.LineChartData;
+import lecho.lib.hellocharts.model.PointValue;
+import lecho.lib.hellocharts.model.SubcolumnValue;
+import lecho.lib.hellocharts.model.Viewport;
+import lecho.lib.hellocharts.view.ColumnChartView;
+import lecho.lib.hellocharts.view.LineChartView;
+
+/**
+ * Created by YY on 2017/1/16.
+ * improved by uqgzhu1  on 2021
+ */
+
+public class ShowConnectActivity extends BaseActivity implements View.OnClickListener {
+
+    public static final String EXTRAS_DEVICE_NAME = "DEVICE_NAME";
+    public static final String EXTRAS_DEVICE_ADDRESS = "DEVICE_ADDRESS";
+    public static final String EXTRAS_DEVICE = "EXTRAS_DEVICE";
+    private List<Integer> listData = new LinkedList<>();
+
+    @BindView(R.id.button_connect)
+    Button button_connect;
+
+    @BindView(R.id.textView_noise)
+    TextView textView_noise;
+    @BindView(R.id.connect_state)
+    TextView connect_state;
+    @BindView(R.id.textView_rssi)
+    TextView textView_rssi;
+
+    @BindView(R.id.tvMed)
+    TextView tvMed;
+    @BindView(R.id.tvAtt)
+    TextView tvAtt;
+
+    @BindView(R.id.lcvEeg)
+    LineChartView lcvEeg;
+    @BindView(R.id.ccvWave)
+    ColumnChartView ccvWave;
+
+    @BindView(R.id.tvModel)
+    TextView tvModel;
+    @BindView(R.id.tvSoft)
+    TextView tvSoft;
+    @BindView(R.id.tvHard)
+    TextView tvHard;
+    @BindView(R.id.tvDeviceId)
+    TextView tvDeviceId;
+    @BindView(R.id.tvVoltage)
+    TextView tvVoltage;
+    @BindView(R.id.tvBattery)
+    TextView tvBattery;
+    @BindView(R.id.tvHead)
+    TextView tvHead;
+
+    private LoadingDialog loadingDialog;
+    private BluetoothDevice bluetoothDevice;
+    private String name;
+    private EEGBluetoothService eegBluetoothService = DeviceChooseActivity.eegBluetoothService;
+    private Serial serial = DeviceChooseActivity.serial;
+
+    private boolean isConnected = false;
+
+    private int mCkErrCount = 0;
+    private TextView mCkErrValTv;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.show_connect_layout);
+        initIntent();
+        initView();
+        initData();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        mCkErrValTv.setText(String.valueOf(mCkErrCount));
+    }
+
+    private int code = Constant.TYPE_BLE;
+    private void initIntent() {
+        Intent intent = getIntent();
+        code = intent.getIntExtra("code", Constant.TYPE_BLE);
+
+        bluetoothDevice = intent.getParcelableExtra(EXTRAS_DEVICE);
+        name = intent.getStringExtra(EXTRAS_DEVICE_NAME);
+        Log.i(TAG, "code " + code + " " + name);
+    }
+
+    private void initView() {
+        // 标题
+        setTitlebarTitle(name);
+
+        mCkErrValTv = findViewById(R.id.ck_err_val_tv);
+        loadingDialog = new LoadingDialog(this);
+
+        // 脑电图
+        List<PointValue> pointValues = new ArrayList<>();
+        for (int i = 0; i < 256; i++) {
+            PointValue pointValue = new PointValue(i, 0);
+            pointValues.add(pointValue);
+        }
+        Line line = new Line(pointValues).setColor(getResources().getColor(R.color.colorAccent))
+                .setHasPoints(false).setStrokeWidth(1);
+        List<Line> lines = new ArrayList<>();
+        lines.add(line);
+        LineChartData lineChartData = new LineChartData(lines);
+
+        lineChartData.setAxisYLeft(new Axis());
+        lineChartData.setAxisXBottom(new Axis());
+        lcvEeg.setLineChartData(lineChartData);
+
+        Axis axisEeg = new Axis();
+        axisEeg.setAutoGenerated(false);
+        ArrayList<AxisValue> axisValuesEeg = new ArrayList<>();
+        axisValuesEeg.add(new AxisValue(600));
+        axisValuesEeg.add(new AxisValue(400));
+        axisValuesEeg.add(new AxisValue(200));
+        axisValuesEeg.add(new AxisValue(0));
+        axisValuesEeg.add(new AxisValue(-200));
+        axisValuesEeg.add(new AxisValue(-400));
+        axisValuesEeg.add(new AxisValue(-600));
+        axisEeg.setValues(axisValuesEeg);
+        lcvEeg.getLineChartData().setAxisYLeft(axisEeg);
+
+        Viewport viewportEeg = lcvEeg.getMaximumViewport();
+        viewportEeg.top = 600;
+        viewportEeg.bottom = -600;
+        lcvEeg.setMaximumViewport(viewportEeg);
+        lcvEeg.setCurrentViewport(viewportEeg);
+        lcvEeg.setViewportCalculationEnabled(false);
+
+        // 脑波图
+        List<Column> columns = new ArrayList<>();
+        for (int i = 0; i < 6; i++) {
+            List<SubcolumnValue> subcolumnValues = new ArrayList<>();
+            subcolumnValues.add(new SubcolumnValue(0).setColor(getResources().getColor(R.color.colorPrimary)));
+            Column column = new Column(subcolumnValues);
+            column.setHasLabels(true).setHasLabelsOnlyForSelected(false);
+            columns.add(column);
+        }
+        ColumnChartData columnChartData = new ColumnChartData(columns);
+        columnChartData.setAxisYLeft(new Axis());
+        List<AxisValue> axisValues = new ArrayList<>();
+        axisValues.add(new AxisValue(0).setLabel(MathUtils.DELTA));
+        axisValues.add(new AxisValue(1).setLabel(MathUtils.THITA));
+        axisValues.add(new AxisValue(2).setLabel(MathUtils.ALPHA));
+        axisValues.add(new AxisValue(3).setLabel(MathUtils.SMR));
+        axisValues.add(new AxisValue(4).setLabel(MathUtils.BETA_N));
+        axisValues.add(new AxisValue(5).setLabel(MathUtils.BETA_P));
+        Axis axis = new Axis(axisValues);
+        columnChartData.setAxisXBottom(axis);
+        ccvWave.setColumnChartData(columnChartData);
+
+        Axis axisWave = new Axis();
+        axisWave.setAutoGenerated(false);
+        ArrayList<AxisValue> axisValuesWave = new ArrayList<>();
+        axisValuesWave.add(new AxisValue(400));
+        axisValuesWave.add(new AxisValue(300));
+        axisValuesWave.add(new AxisValue(200));
+        axisValuesWave.add(new AxisValue(100));
+        axisValuesWave.add(new AxisValue(0));
+        axisWave.setValues(axisValuesWave);
+        ccvWave.getColumnChartData().setAxisYLeft(axisWave);
+
+        Viewport viewportWave = ccvWave.getMaximumViewport();
+        viewportWave.top = 400;
+        viewportWave.bottom = 0;
+        ccvWave.setMaximumViewport(viewportWave);
+        ccvWave.setCurrentViewport(viewportWave);
+        ccvWave.setViewportCalculationEnabled(false);
+
+    }
+    // 专注力算法
+    private ESAlgoSDKB esAlgoSDKB = eegBluetoothService.getEsAlgoSDKB();
+    // 单咬牙算法
+    private ESAlgoTeethHelper esAlgoTeethHelper = new ESAlgoTeethHelper();
+    // 三眨眼算法
+    private Blink3Algo blink3Algo = new Blink3Algo();
+    // 头部算法
+    private ESAlgoSDKGy esAlgoSDKGy = new ESAlgoSDKGy();
+    private void initData() {
+        eegBluetoothService.addConnectStateListener(iConnectStateListener);
+
+        // 添加算法监听
+        esAlgoSDKB.setAlgoListener(new AlgoListener() {
+            @Override
+            public void gotResult(long count) {
+                int attention = esAlgoSDKB.getAttention(); // 专注力
+                int meditation = esAlgoSDKB.getMeditation(); // 冥想值
+                int fatigue = esAlgoSDKB.getFatigue(); // 疲劳度
+
+                // 未佩戴好, 数值为0
+                if(noiseValue == 200){
+                    attention = 0;
+                    meditation = 0;
+                    fatigue = 0;
+                }
+
+                final int att = attention;
+                final int med = meditation;
+                final int fat = fatigue;
+
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        tvMed.setText(String.valueOf(med));
+                        tvAtt.setText(String.valueOf(att));
+                    }
+                });
+            }
+
+            @Override
+            public void stateChange(ESAlgoSDKB.STATE state) {
+
+            }
+
+            @Override
+            public void onWave(float[] ffts, Map<String, Float> waves) {
+                List<Column> columns = ccvWave.getColumnChartData().getColumns();
+                columns.get(0).getValues().get(0).setTarget(waves.get(MathUtils.DELTA));
+                columns.get(1).getValues().get(0).setTarget(waves.get(MathUtils.THITA));
+                columns.get(2).getValues().get(0).setTarget(waves.get(MathUtils.ALPHA));
+                columns.get(3).getValues().get(0).setTarget(waves.get(MathUtils.SMR));
+                columns.get(4).getValues().get(0).setTarget(waves.get(MathUtils.BETA_N));
+                columns.get(5).getValues().get(0).setTarget(waves.get(MathUtils.BETA_P));
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        ccvWave.startDataAnimation();
+                    }
+                });
+            }
+
+        });
+
+        esAlgoTeethHelper.addListener(new ESAlgoTeethHelper.OnTeethListener() {
+            @Override
+            public void onResult(byte res) {
+                if(res == 1){
+                    Log.i(TAG, "单咬牙");
+                }
+            }
+        });
+
+        blink3Algo.setBlink3Listener(new Blink3Listener() {
+            @Override
+            public void onResult(int resultCode) {
+                if(resultCode == 1){
+                    Log.i(TAG, "三眨眼");
+                }
+            }
+        });
+
+
+        esAlgoSDKGy.setAlgoGyListener(new AlgoGyListener() {
+            @Override
+            public void onResult(int upOrDownHead, int leftOrRightHead, int a3, int walk, int turnAndBack, int userMoveTag) {
+                StringBuilder stringBuilder = new StringBuilder();
+                if (userMoveTag == 1){ stringBuilder.append("移动"); }
+
+                int range = 3; // 阈值, 防抖
+                if (upOrDownHead > range) { stringBuilder.append("低头"); }
+                if (upOrDownHead < -range) { stringBuilder.append("抬头"); }
+                if (leftOrRightHead > range) { stringBuilder.append("左偏头"); }
+                if (leftOrRightHead < -range) { stringBuilder.append("右偏头"); }
+
+                if (turnAndBack == 1) { stringBuilder.append("左转头回正"); }
+                if (turnAndBack == -1) { stringBuilder.append("右转头回正"); }
+
+                tvHead.setText(stringBuilder.toString());
+            }
+        });
+    }
+
+    private int noiseValue = 200;
+    private EEGBluetoothService.IConnectStateListener iConnectStateListener = new EEGBluetoothService.IConnectStateListener() {
+
+        @Override
+        public void onConnectStateChanged(boolean bConnected) {
+            Log.e(TAG, "onConnectStateChanged==============>isConnected:" + isConnected);
+            isConnected = bConnected;
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    loadingDialog.dismiss();
+                    if (isConnected) {
+                        connect_state.setText(getString(R.string.connected));
+                        button_connect.setText(getString(R.string.disconnect));
+                    } else {
+                        connect_state.setText(getString(R.string.unconnected));
+                        button_connect.setText(getString(R.string.connect));
+                    }
+                }
+            });
+
+            if (isConnected) {
+                String tag = "test";
+                esAlgoSDKB.startAlgorithm(tag);
+                esAlgoSDKGy.startAlgorithm(tag);
+            }else{
+                esAlgoSDKB.stopAlgorithm();
+                esAlgoSDKGy.stopAlgorithm();
+            }
+        }
+
+        @Override
+        public void onEeg(int eeg) {
+            listData.add(eeg);
+
+            int size = listData.size();
+            if (listData.size() >= 8) {
+                List<PointValue> pointValues = lcvEeg.getLineChartData().getLines().get(0).getValues();
+                for (int i = 0; i < pointValues.size(); i++) {
+                    PointValue pointValue = pointValues.get(i);
+                    if(i < pointValues.size() - size){
+                        int index = i + size;
+                        pointValue.set(i, pointValues.get(index).getY());
+                    }else{
+                        int index = i - (pointValues.size() - size);
+                        pointValue.set(i, listData.get(index));
+                    }
+                }
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        lcvEeg.startDataAnimation(0);
+                    }
+                });
+
+                listData = new ArrayList<>();
+            }
+
+            // 算法传入数据
+            esAlgoTeethHelper.inputData(new int[]{eeg});
+            blink3Algo.inputRawData(new int[]{eeg});
+        }
+
+        @Override
+        public void onNoise(final int noise) {
+            noiseValue = noise;
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    textView_noise.setText(String.valueOf(noise));
+                }
+            });
+        }
+
+        @Override
+        public void onRssi(final int rssi) {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    textView_rssi.setText(String.valueOf(rssi));
+                }
+            });
+        }
+
+        @Override
+        public void onGyro(int[] gyro, float[] attitude) {
+            esAlgoSDKGy.inputData(gyro, attitude[0], attitude[1], attitude[2]);
+        }
+
+        @Override
+        public void onVersion(final String model, final String hardware, final String version, final String deviceId) {
+            if(serial != null)
+                serial.openEeg();
+
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    tvModel.setText(model);
+                    tvHard.setText(hardware);
+                    tvSoft.setText(version);
+                    tvDeviceId.setText(deviceId);
+                }
+            });
+        }
+
+        @Override
+        public void onBattery(final float voltage, final float battery) {
+            super.onBattery(voltage, battery);
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    tvVoltage.setText(String.valueOf(voltage));
+                    tvBattery.setText(String.valueOf(battery));
+                }
+            });
+        }
+    };
+
+    @OnClick({R.id.button_connect, R.id.button_gyro, R.id.bReset})
+    @Override
+    public void onClick(View v) {
+        switch (v.getId()) {
+            case R.id.button_gyro:
+                startActivity(new Intent(this, ShowGyroActivity.class));
+                break;
+            case R.id.button_connect:
+                switch (code){
+                    case Constant.TYPE_BLE:
+                        if (!isConnected) {
+                            loadingDialog.show();
+                            eegBluetoothService.connectDevice(bluetoothDevice, Constant.CONNECT_TIME_OUT);
+                        } else {
+                            eegBluetoothService.close();
+                        }
+                        break;
+                    case Constant.TYPE_SERIAL:
+                        if(isConnected){
+                            serial.closeEeg();
+                            serial.close();
+                            connect_state.setText(getString(R.string.unconnected));
+                            button_connect.setText(getString(R.string.connect));
+                            esAlgoSDKB.stopAlgorithm();
+                            isConnected = false;
+                        }else{
+                            serial.open(name);
+                            connect_state.setText(getString(R.string.connected));
+                            button_connect.setText(getString(R.string.disconnect));
+                            esAlgoSDKB.startAlgorithm("test");
+                            isConnected = true;
+
+                            serial.checkVersion();
+                        }
+                        break;
+                }
+                break;
+            case R.id.bReset:
+                // 算法结果不正常时,校准算法
+                resetAlgo();
+                break;
+        }
+    }
+
+    // 校准重置
+    private void resetAlgo(){
+        esAlgoSDKB.restartAlgo();
+        esAlgoTeethHelper.restAlgo();
+        blink3Algo.initWs();
+        esAlgoSDKGy.calibrateBaseline();
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+
+        eegBluetoothService.removeConnectStateListener(iConnectStateListener);
+        switch (code) {
+            case Constant.TYPE_BLE:
+                eegBluetoothService.close();
+                break;
+            case Constant.TYPE_SERIAL:
+                serial.closeEeg();
+                serial.close();
+                break;
+        }
+        eegBluetoothService = null;
+    }
+
+}

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--   量产工具  -->
+    <color name="light_blue">#91E0FF</color>
+    <color name="light_blue1">#0242BD</color>
+    <color name="white">#ffffff</color>
+    <color name="ee">#ffffaf</color>
+    <color name="sinalge_text_name_color">#1d1d1b</color>
+    <color name="sinalge_text_address_color">#666664</color>
+
+
+    <!--    新定义的    -->
+    <color name="colorPrimary">#3F51B5</color>
+    <color name="colorPrimaryDark">#303F9F</color>
+    <color name="colorAccent">#FF4081</color>
+    <color name="text_color_01">#100f0f</color>
+</resources>
